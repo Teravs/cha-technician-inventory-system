@@ -1,0 +1,148 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  KEPALA
+  STAFF
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model User {
+  id               Int             @id @default(autoincrement())
+  name             String          @db.VarChar(100)
+  username         String          @unique @db.VarChar(50)
+  password         String          @db.VarChar(255)
+  role             Role            @default(STAFF)
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  createdRequests  Request[]       @relation("Requester")
+  approvedRequests Request[]       @relation("Approver")
+  stockMovements   StockMovement[]
+
+  @@map("users")
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  items       Item[]
+
+  @@map("categories")
+}
+
+model Unit {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(50)
+  symbol    String   @unique @db.VarChar(10)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items     Item[]
+
+  @@map("units")
+}
+
+model Item {
+  id           Int             @id @default(autoincrement())
+  name         String          @db.VarChar(100)
+  brand        String          @db.VarChar(50)
+  size         String          @db.VarChar(50)
+  categoryId   Int             @map("category_id")
+  unitId       Int             @map("unit_id")
+  stock        Int             @default(0)
+  minimumStock Int             @default(0) @map("minimum_stock")
+  isActive     Boolean         @default(true) @map("is_active")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  category       Category        @relation(fields: [categoryId], references: [id])
+  unit           Unit            @relation(fields: [unitId], references: [id])
+  requestItems   RequestItem[]
+  stockMovements StockMovement[]
+
+  @@index([categoryId])
+  @@index([unitId])
+  @@map("items")
+}
+
+model Request {
+  id             Int           @id @default(autoincrement())
+  requestCode    String        @unique @db.VarChar(30) @map("request_code")
+  requesterId    Int           @map("requester_id")
+  approverId     Int?          @map("approver_id")
+  purpose        String        @db.Text
+  status         RequestStatus @default(PENDING)
+  rejectionReason String?      @db.VarChar(255) @map("rejection_reason")
+  approvedAt     DateTime?     @map("approved_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  requester      User          @relation("Requester", fields: [requesterId], references: [id])
+  approver       User?         @relation("Approver", fields: [approverId], references: [id])
+  items          RequestItem[]
+
+  @@index([requesterId])
+  @@index([approverId])
+  @@map("requests")
+}
+
+model RequestItem {
+  id        Int      @id @default(autoincrement())
+  requestId Int      @map("request_id")
+  itemId    Int      @map("item_id")
+  quantity  Int
+
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  item      Item     @relation(fields: [itemId], references: [id])
+
+  @@index([requestId])
+  @@index([itemId])
+  @@map("request_items")
+}
+
+model StockMovement {
+  id            Int          @id @default(autoincrement())
+  itemId        Int          @map("item_id")
+  userId        Int          @map("user_id")
+  type          MovementType
+  quantity      Int
+  stockBefore   Int          @map("stock_before")
+  stockAfter    Int          @map("stock_after")
+  description   String       @db.VarChar(255)
+  referenceType String?      @db.VarChar(50) @map("reference_type")
+  referenceId   Int?         @map("reference_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  item          Item         @relation(fields: [itemId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+
+  @@index([itemId])
+  @@index([userId])
+  @@map("stock_movements")
+}
