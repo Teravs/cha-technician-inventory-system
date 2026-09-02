@@ -67,11 +67,16 @@ export default function Reports() {
     }
   };
 
+  const MONTH_NAMES = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
   return (
     <div style={{ maxWidth: '850px' }}>
       <div className="mb-4">
         <h2 className="h4 fw-bold text-dark mb-0">Laporan Resmi Inventaris</h2>
-        <small className="text-secondary">Cetak dokumen PDF audit mutasi stok PT Chand Hajar Aswad</small>
+        <small className="text-secondary">Cetak dokumen PDF audit mutasi stok & pengeluaran material teknisi PT Chand Hajar Aswad</small>
       </div>
 
       <div className="row g-4">
@@ -118,14 +123,14 @@ export default function Reports() {
                   Pilih periode bulan dan tahun audit inventaris warehouse:
                 </p>
                 <div className="row g-2 mb-3">
-                  <div className="col-6">
+                  <div className="col-7">
                     <select className="form-select form-select-sm" value={month} onChange={(e) => setMonth(e.target.value)}>
-                      {[...Array(12)].map((_, i) => (
-                        <option key={i + 1} value={i + 1}>Bulan {i + 1}</option>
+                      {MONTH_NAMES.map((name, i) => (
+                        <option key={i + 1} value={i + 1}>{name}</option>
                       ))}
                     </select>
                   </div>
-                  <div className="col-6">
+                  <div className="col-5">
                     <input
                       type="number"
                       className="form-control form-control-sm"

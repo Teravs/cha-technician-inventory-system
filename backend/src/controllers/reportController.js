@@ -27,17 +27,17 @@ exports.exportWeeklyPdf = async (req, res) => {
     const end = endDate ? new Date(endDate) : new Date();
 
     const pdfBuffer = await generatePdfReport({
-      title: 'Weekly Inventory Movement Report',
-      period: `${start.toLocaleDateString()} to ${end.toLocaleDateString()}`,
+      title: 'Laporan Mingguan Mutasi & Pengajuan Barang Teknisi',
+      period: `${start.toLocaleDateString('id-ID')} s/d ${end.toLocaleDateString('id-ID')}`,
       startDate: start,
       endDate: end
     });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=CHA_Weekly_Report_${start.toISOString().split('T')[0]}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=CHA_Laporan_Mingguan_${start.toISOString().split('T')[0]}.pdf`);
     return res.send(pdfBuffer);
   } catch (err) {
-    return res.status(500).json({ message: 'Failed to export weekly PDF', error: err.message });
+    return res.status(500).json({ message: 'Gagal mengekspor PDF mingguan', error: err.message });
   }
 };
 
@@ -50,17 +50,23 @@ exports.exportMonthlyPdf = async (req, res) => {
     const start = new Date(currentYear, currentMonth, 1);
     const end = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
 
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const periodLabel = `${monthNames[currentMonth]} ${currentYear}`;
+
     const pdfBuffer = await generatePdfReport({
-      title: 'Monthly Warehouse Inventory Audit Report',
-      period: start.toLocaleString('default', { month: 'long', year: 'numeric' }),
+      title: 'Laporan Bulanan Audit Inventaris & Mutasi Teknisi',
+      period: periodLabel,
       startDate: start,
       endDate: end
     });
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=CHA_Monthly_Report_${currentYear}_${currentMonth + 1}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=CHA_Laporan_Bulanan_${currentYear}_${currentMonth + 1}.pdf`);
     return res.send(pdfBuffer);
   } catch (err) {
-    return res.status(500).json({ message: 'Failed to export monthly PDF', error: err.message });
+    return res.status(500).json({ message: 'Gagal mengekspor PDF bulanan', error: err.message });
   }
 };
