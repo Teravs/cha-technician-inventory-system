@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
 
   // Setup Axios Defaults
   axios.defaults.withCredentials = true;
+  axios.defaults.baseURL = import.meta.env.VITE_API_URL || '';
 
   const fetchCurrentUser = async () => {
     try {

@@ -13,6 +13,7 @@ Sistem Informasi Manajemen Inventaris, Pengajuan Suku Cadang/Material Teknisi, d
   - [2. Persiapan Database MySQL](#2-persiapan-database-mysql)
   - [3. Konfigurasi & Menjalankan Backend](#3-konfigurasi--menjalankan-backend)
   - [4. Konfigurasi & Menjalankan Frontend](#4-konfigurasi--menjalankan-frontend)
+- [Panduan Deployment / Hosting (Production)](DEPLOYMENT-GUIDE.md)
 - [Akun Pengguna Default (Demo Credentials)](#-akun-pengguna-default-demo-credentials)
 - [Struktur Direktori Proyek](#-struktur-direktori-proyek)
 - [Catatan & Troubleshooting](#-catatan--troubleshooting)

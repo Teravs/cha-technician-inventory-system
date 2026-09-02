@@ -15,12 +15,27 @@ const stockMovementRoutes = require('./routes/stockMovementRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 
+const path = require('path');
+const fs = require('fs');
+
 const app = express();
 
+// Konfigurasi CORS Fleksibel untuk Development & Production Hosting
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000'];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Izinkan request tanpa origin (seperti mobile apps, curl, postman) atau jika origin ada dalam daftar allowed
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+    return callback(null, true); // default allow for deployment flexibility
+  },
   credentials: true
 }));
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -39,6 +54,16 @@ app.use('/api/reports', reportRoutes);
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'CHA Technician Inventory API is running' });
 });
+
+// Sajikan Frontend Build (dist) jika dideploy dalam 1 Server (Single-Port Hosting)
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 // Error Handler
 app.use((err, req, res, next) => {
