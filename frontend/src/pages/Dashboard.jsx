@@ -78,7 +78,7 @@ export default function Dashboard() {
         {/* Low Stock Table */}
         <div className="col-12 col-lg-6">
           <div className="card border-slate-200 shadow-sm h-100">
-            <div className="card-header bg-white border-bottom py-3">
+            <div className="card-header py-3">
               <h5 className="card-title fs-6 fw-bold mb-0 text-warning">
                 <i className="bi bi-exclamation-triangle-fill me-2"></i>Low Stock Items
               </h5>
@@ -101,13 +101,13 @@ export default function Dashboard() {
                   ) : (
                     data?.lowStockItems.map((item) => (
                       <tr key={item.id}>
-                        <td>{item.id}</td>
+                        <td className="fw-bold" style={{ color: '#38bdf8' }}>#{item.id}</td>
                         <td>
-                          <strong>{item.name}</strong>
-                          <div className="text-muted" style={{ fontSize: '11px' }}>{item.brand}</div>
+                          <strong className="text-white">{item.name}</strong>
+                          <div style={{ color: '#94a3b8', fontSize: '11px' }}>{item.brand}</div>
                         </td>
-                        <td><strong>{item.stock}</strong></td>
-                        <td>{item.minimumStock}</td>
+                        <td><strong className="text-white">{item.stock}</strong></td>
+                        <td style={{ color: '#94a3b8' }}>{item.minimumStock}</td>
                         <td>{renderBadge(item.calculatedStatus)}</td>
                         <td className="text-end">
                           <Link to={`/inventory/${item.id}`} className="btn btn-sm btn-outline-primary" title="View Detail">
@@ -126,7 +126,7 @@ export default function Dashboard() {
         {/* Out of Stock Table */}
         <div className="col-12 col-lg-6">
           <div className="card border-slate-200 shadow-sm h-100">
-            <div className="card-header bg-white border-bottom py-3">
+            <div className="card-header py-3">
               <h5 className="card-title fs-6 fw-bold mb-0 text-danger">
                 <i className="bi bi-x-octagon-fill me-2"></i>Out of Stock Items
               </h5>
@@ -148,10 +148,10 @@ export default function Dashboard() {
                   ) : (
                     data?.outOfStockItems.map((item) => (
                       <tr key={item.id}>
-                        <td>{item.id}</td>
+                        <td className="fw-bold" style={{ color: '#38bdf8' }}>#{item.id}</td>
                         <td>
-                          <strong>{item.name}</strong>
-                          <div className="text-muted" style={{ fontSize: '11px' }}>{item.brand}</div>
+                          <strong className="text-white">{item.name}</strong>
+                          <div style={{ color: '#94a3b8', fontSize: '11px' }}>{item.brand}</div>
                         </td>
                         <td><span className="text-danger fw-bold">0</span></td>
                         <td>{renderBadge(item.calculatedStatus)}</td>

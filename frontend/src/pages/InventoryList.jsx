@@ -275,21 +275,25 @@ export default function InventoryList() {
 
                   return (
                     <tr key={item.id} className={!item.isActive ? 'table-light text-muted' : ''}>
-                      <td className="text-muted fw-bold">#{item.id}</td>
+                      <td className="fw-bold" style={{ color: '#38bdf8' }}>#{item.id}</td>
                       <td>
-                        <div className={`fw-bold ${item.isActive ? 'text-dark' : 'text-muted text-decoration-line-through'}`}>
+                        <div className={`fw-bold ${item.isActive ? 'text-white' : 'text-muted text-decoration-line-through'}`} style={{ fontSize: '14px' }}>
                           {item.name}
                         </div>
-                        <div className="text-muted small">{item.brand} | {item.size}</div>
+                        <div className="small" style={{ color: '#94a3b8' }}>{item.brand} | {item.size}</div>
                       </td>
-                      <td><span className="badge bg-light text-dark border">{item.category?.name}</span></td>
-                      <td>{item.unit?.symbol}</td>
-                      <td className="text-end fw-bold fs-6">{item.stock}</td>
-                      <td className="text-end text-muted">{minLimit}</td>
+                      <td>
+                        <span className="badge" style={{ backgroundColor: '#1e293b', color: '#38bdf8', border: '1px solid #334155' }}>
+                          {item.category?.name}
+                        </span>
+                      </td>
+                      <td><span className="fw-semibold text-white">{item.unit?.symbol}</span></td>
+                      <td className="text-end fw-bold fs-6 text-white">{item.stock}</td>
+                      <td className="text-end" style={{ color: '#94a3b8' }}>{minLimit}</td>
                       <td className="text-center">
-                        {isOut && <span className="badge bg-danger">HABIS</span>}
-                        {isLow && <span className="badge bg-warning text-dark">MENIPIS</span>}
-                        {!isOut && !isLow && <span className="badge bg-success">AMAN</span>}
+                        {isOut && <span className="badge bg-danger-subtle text-danger border border-danger-subtle">HABIS</span>}
+                        {isLow && <span className="badge bg-warning-subtle text-warning border border-warning-subtle">MENIPIS</span>}
+                        {!isOut && !isLow && <span className="badge bg-success-subtle text-success border border-success-subtle">AMAN</span>}
                       </td>
                       <td className="text-center">
                         {item.isActive ? (
