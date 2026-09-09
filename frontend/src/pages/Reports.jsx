@@ -1,11 +1,23 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import ToastNotification from '../components/ToastNotification';
 
 export default function Reports() {
   const [downloadingWeekly, setDownloadingWeekly] = useState(false);
   const [downloadingMonthly, setDownloadingMonthly] = useState(false);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
+
+  // Toast State
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: 'success',
+  });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+  };
 
   const handleDownloadWeekly = async () => {
     setDownloadingWeekly(true);
@@ -20,6 +32,7 @@ export default function Reports() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      showToast('Laporan PDF mingguan berhasil diunduh.', 'success');
     } catch (err) {
       let errMsg = 'Gagal mendownload laporan PDF mingguan.';
       if (err.response?.data instanceof Blob) {
@@ -31,7 +44,7 @@ export default function Reports() {
           // ignore
         }
       }
-      alert(errMsg);
+      showToast(errMsg, 'danger');
     } finally {
       setDownloadingWeekly(false);
     }
@@ -50,6 +63,7 @@ export default function Reports() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      showToast('Laporan PDF bulanan berhasil diunduh.', 'success');
     } catch (err) {
       let errMsg = 'Gagal mendownload laporan PDF bulanan.';
       if (err.response?.data instanceof Blob) {
@@ -61,7 +75,7 @@ export default function Reports() {
           // ignore
         }
       }
-      alert(errMsg);
+      showToast(errMsg, 'danger');
     } finally {
       setDownloadingMonthly(false);
     }
@@ -157,6 +171,14 @@ export default function Reports() {
           </div>
         </div>
       </div>
+
+      {/* Floating Modern Toast Alert */}
+      <ToastNotification
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+      />
     </div>
   );
 }

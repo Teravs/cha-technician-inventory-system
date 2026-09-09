@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../hooks/useAuth';
+import ConfirmModal from '../components/ConfirmModal';
+import ToastNotification from '../components/ToastNotification';
 
 export default function InventoryList() {
   const { user } = useAuth();
@@ -16,6 +18,29 @@ export default function InventoryList() {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [currentItem, setCurrentItem] = useState(null);
 
+  // Confirmation Modal State
+  const [confirmState, setConfirmState] = useState({
+    show: false,
+    item: null,
+    title: '',
+    message: '',
+    confirmText: '',
+    confirmVariant: 'warning',
+    icon: 'bi-exclamation-triangle',
+    loading: false,
+  });
+
+  // Toast Notification State
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: 'success',
+  });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+  };
+
   // Form State Barang Baru / Edit
   const [formData, setFormData] = useState({
     name: '', brand: '', size: '', stock: 0, minStock: 5, categoryId: '', unitId: ''
@@ -25,6 +50,8 @@ export default function InventoryList() {
   const [adjustData, setAdjustData] = useState({
     type: 'IN', quantity: 1, reason: ''
   });
+
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   const fetchData = async () => {
     setLoading(true);
@@ -76,13 +103,15 @@ export default function InventoryList() {
     try {
       if (currentItem) {
         await axios.put(`/api/items/${currentItem.id}`, formData);
+        showToast('Data barang berhasil diperbarui.', 'success');
       } else {
         await axios.post('/api/items', formData);
+        showToast('Barang baru berhasil ditambahkan.', 'success');
       }
       setShowItemModal(false);
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal menyimpan data barang');
+      showToast(err.response?.data?.message || 'Gagal menyimpan data barang.', 'danger');
     }
   };
 
@@ -96,22 +125,51 @@ export default function InventoryList() {
     e.preventDefault();
     try {
       await axios.post(`/api/items/${currentItem.id}/adjust`, adjustData);
+      showToast('Penyesuaian mutasi stok berhasil dicatat.', 'success');
       setShowAdjustModal(false);
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal melakukan mutasi stok');
+      showToast(err.response?.data?.message || 'Gagal melakukan mutasi stok.', 'danger');
     }
   };
 
-  const handleDeleteItem = async (item) => {
-    if (window.confirm(`Yakin ingin menghapus barang "${item.name}"?`)) {
-      try {
-        const res = await axios.delete(`/api/items/${item.id}`);
-        alert(res.data?.message || 'Barang berhasil dihapus');
-        fetchData();
-      } catch (err) {
-        alert(err.response?.data?.message || 'Gagal menghapus barang');
-      }
+  const handleOpenToggleStatusModal = (item) => {
+    if (item.isActive) {
+      setConfirmState({
+        show: true,
+        item,
+        title: 'Arsipkan Barang',
+        message: `Barang "${item.name}" akan dinonaktifkan dan disembunyikan dari pengajuan teknisi. Riwayat mutasi tetap tersimpan aman.`,
+        confirmText: 'Ya, Arsipkan',
+        confirmVariant: 'warning',
+        icon: 'bi-archive-fill',
+        loading: false,
+      });
+    } else {
+      setConfirmState({
+        show: true,
+        item,
+        title: 'Aktifkan Kembali Barang',
+        message: `Barang "${item.name}" akan dipulihkan dan dapat digunakan kembali untuk pengajuan material teknisi.`,
+        confirmText: 'Ya, Aktifkan Kembali',
+        confirmVariant: 'success',
+        icon: 'bi-arrow-counterclockwise',
+        loading: false,
+      });
+    }
+  };
+
+  const handleExecuteToggleStatus = async () => {
+    if (!confirmState.item) return;
+    setConfirmState((prev) => ({ ...prev, loading: true }));
+    try {
+      const res = await axios.patch(`/api/items/${confirmState.item.id}/toggle-status`);
+      showToast(res.data?.message || 'Status barang berhasil diperbarui.', 'success');
+      setConfirmState({ show: false, item: null, title: '', message: '', confirmText: '', confirmVariant: 'warning', icon: 'bi-exclamation-triangle', loading: false });
+      fetchData();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Gagal mengubah status barang.', 'danger');
+      setConfirmState((prev) => ({ ...prev, loading: false }));
     }
   };
 
@@ -119,7 +177,12 @@ export default function InventoryList() {
     const matchSearch = item.name.toLowerCase().includes(search.toLowerCase()) ||
                         item.brand.toLowerCase().includes(search.toLowerCase());
     const matchCat = selectedCategory ? item.categoryId === parseInt(selectedCategory, 10) : true;
-    return matchSearch && matchCat;
+    const matchStatus = statusFilter === 'ACTIVE'
+      ? item.isActive === true
+      : statusFilter === 'ARCHIVED'
+      ? item.isActive === false
+      : true;
+    return matchSearch && matchCat && matchStatus;
   });
 
   const canManage = user?.role === 'SUPER_ADMIN' || user?.role === 'KEPALA';
@@ -129,7 +192,7 @@ export default function InventoryList() {
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
           <h2 className="h4 fw-bold text-dark mb-0">Daftar Inventaris Barang</h2>
-          <small className="text-secondary">Monitoring stok material dan komponen teknisi CHA</small>
+          <small className="text-secondary">Monitoring stok material, komponen teknisi, dan pengelolaan status aktif/arsip</small>
         </div>
         {canManage && (
           <button className="btn btn-primary btn-sm" onClick={() => handleOpenItemModal()}>
@@ -142,7 +205,7 @@ export default function InventoryList() {
       <div className="card border-slate-200 shadow-sm mb-4">
         <div className="card-body p-3">
           <div className="row g-2">
-            <div className="col-12 col-md-8">
+            <div className="col-12 col-md-5">
               <input
                 type="text"
                 className="form-control form-control-sm"
@@ -151,7 +214,7 @@ export default function InventoryList() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="col-12 col-md-4">
+            <div className="col-6 col-md-4">
               <select
                 className="form-select form-select-sm"
                 value={selectedCategory}
@@ -161,6 +224,17 @@ export default function InventoryList() {
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
+              </select>
+            </div>
+            <div className="col-6 col-md-3">
+              <select
+                className="form-select form-select-sm"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="ALL">Semua Status (Aktif & Arsip)</option>
+                <option value="ACTIVE">Hanya Barang Aktif</option>
+                <option value="ARCHIVED">Hanya Barang Diarsipkan</option>
               </select>
             </div>
           </div>
@@ -173,24 +247,25 @@ export default function InventoryList() {
           <table className="table table-hover align-middle mb-0" style={{ fontSize: '13px' }}>
             <thead className="table-light">
               <tr>
-                <th>ID</th>
+                <th style={{ width: '50px' }}>ID</th>
                 <th>Nama Barang & Spesifikasi</th>
                 <th>Kategori</th>
                 <th>Satuan</th>
-                <th className="text-end">Stok Tersedia</th>
-                <th className="text-end">Min. Stok</th>
+                <th className="text-end">Stok</th>
+                <th className="text-end">Min.</th>
+                <th className="text-center">Ketersediaan</th>
                 <th className="text-center">Status</th>
-                {canManage && <th className="text-center">Aksi</th>}
+                {canManage && <th className="text-center" style={{ width: '170px' }}>Aksi</th>}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={canManage ? 8 : 7} className="text-center py-4 text-muted">Memuat data inventaris...</td>
+                  <td colSpan={canManage ? 9 : 8} className="text-center py-4 text-muted">Memuat data inventaris...</td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={canManage ? 8 : 7} className="text-center py-4 text-muted">Tidak ada data barang yang cocok.</td>
+                  <td colSpan={canManage ? 9 : 8} className="text-center py-4 text-muted">Tidak ada data barang yang cocok dengan filter.</td>
                 </tr>
               ) : (
                 filteredItems.map((item) => {
@@ -199,10 +274,12 @@ export default function InventoryList() {
                   const isLow = item.stock > 0 && item.stock <= minLimit;
 
                   return (
-                    <tr key={item.id}>
+                    <tr key={item.id} className={!item.isActive ? 'table-light text-muted' : ''}>
                       <td className="text-muted fw-bold">#{item.id}</td>
                       <td>
-                        <div className="fw-bold text-dark">{item.name}</div>
+                        <div className={`fw-bold ${item.isActive ? 'text-dark' : 'text-muted text-decoration-line-through'}`}>
+                          {item.name}
+                        </div>
                         <div className="text-muted small">{item.brand} | {item.size}</div>
                       </td>
                       <td><span className="badge bg-light text-dark border">{item.category?.name}</span></td>
@@ -214,31 +291,50 @@ export default function InventoryList() {
                         {isLow && <span className="badge bg-warning text-dark">MENIPIS</span>}
                         {!isOut && !isLow && <span className="badge bg-success">AMAN</span>}
                       </td>
+                      <td className="text-center">
+                        {item.isActive ? (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle">AKTIF</span>
+                        ) : (
+                          <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle">ARSIP</span>
+                        )}
+                      </td>
                       {canManage && (
                         <td className="text-center">
-                          <div className="btn-group btn-group-sm">
-                            <button
-                              className="btn btn-outline-secondary"
-                              title="Update Stok (In/Out/Adjust)"
-                              onClick={() => handleOpenAdjustModal(item)}
-                            >
-                              <i className="bi bi-arrow-left-right"></i>
-                            </button>
-                            <button
-                              className="btn btn-outline-primary"
-                              title="Edit Detail Barang"
-                              onClick={() => handleOpenItemModal(item)}
-                            >
-                              <i className="bi bi-pencil"></i>
-                            </button>
-                            <button
-                              className="btn btn-outline-danger"
-                              title="Hapus Barang"
-                              onClick={() => handleDeleteItem(item)}
-                            >
-                              <i className="bi bi-trash"></i>
-                            </button>
-                          </div>
+                          {item.isActive ? (
+                            <div className="btn-group btn-group-sm">
+                              <button
+                                className="btn btn-outline-secondary"
+                                title="Update Stok (In/Out/Adjust)"
+                                onClick={() => handleOpenAdjustModal(item)}
+                              >
+                                <i className="bi bi-arrow-left-right"></i>
+                              </button>
+                              <button
+                                className="btn btn-outline-primary"
+                                title="Edit Detail Barang"
+                                onClick={() => handleOpenItemModal(item)}
+                              >
+                                <i className="bi bi-pencil"></i>
+                              </button>
+                              <button
+                                className="btn btn-outline-warning"
+                                title="Nonaktifkan / Arsipkan Barang"
+                                onClick={() => handleOpenToggleStatusModal(item)}
+                              >
+                                <i className="bi bi-toggle-on"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="btn-group btn-group-sm">
+                              <button
+                                className="btn btn-success"
+                                title="Aktifkan Kembali / Pulihkan Barang"
+                                onClick={() => handleOpenToggleStatusModal(item)}
+                              >
+                                <i className="bi bi-arrow-counterclockwise me-1"></i> Pulihkan
+                              </button>
+                            </div>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -416,6 +512,27 @@ export default function InventoryList() {
           </div>
         </div>
       )}
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText={confirmState.confirmText}
+        confirmVariant={confirmState.confirmVariant}
+        icon={confirmState.icon}
+        loading={confirmState.loading}
+        onConfirm={handleExecuteToggleStatus}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, show: false }))}
+      />
+
+      {/* Floating Modern Toast Alert */}
+      <ToastNotification
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+      />
     </div>
   );
 }

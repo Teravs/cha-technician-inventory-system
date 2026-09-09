@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import ConfirmModal from '../components/ConfirmModal';
+import ToastNotification from '../components/ToastNotification';
 
 export default function UnitManagement() {
   const [units, setUnits] = useState([]);
@@ -7,6 +9,29 @@ export default function UnitManagement() {
   const [showModal, setShowModal] = useState(false);
   const [currentUnit, setCurrentUnit] = useState(null);
   const [formData, setFormData] = useState({ name: '', symbol: '' });
+
+  // Confirmation Modal State
+  const [confirmState, setConfirmState] = useState({
+    show: false,
+    title: '',
+    message: '',
+    confirmText: '',
+    confirmVariant: 'warning',
+    icon: 'bi-question-circle',
+    loading: false,
+    action: null,
+  });
+
+  // Toast Notification State
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: 'success',
+  });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+  };
 
   const fetchUnits = () => {
     setLoading(true);
@@ -36,24 +61,48 @@ export default function UnitManagement() {
     try {
       if (currentUnit) {
         await axios.put(`/api/units/${currentUnit.id}`, formData);
+        showToast('Satuan berhasil diperbarui.', 'success');
       } else {
         await axios.post('/api/units', formData);
+        showToast('Satuan baru berhasil ditambahkan.', 'success');
       }
       setShowModal(false);
       fetchUnits();
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal menyimpan data satuan');
+      showToast(err.response?.data?.message || 'Gagal menyimpan data satuan.', 'danger');
     }
   };
 
-  const handleToggleStatus = async (unit) => {
-    if (window.confirm(`Ubah status aktif satuan "${unit.name}"?`)) {
-      try {
-        await axios.patch(`/api/units/${unit.id}/toggle-status`);
-        fetchUnits();
-      } catch (err) {
-        alert('Gagal memperbarui status satuan');
-      }
+  const handleOpenToggleStatusModal = (unit) => {
+    const isDeactivating = unit.isActive !== false;
+    setConfirmState({
+      show: true,
+      title: isDeactivating ? 'Nonaktifkan Satuan' : 'Aktifkan Satuan',
+      message: isDeactivating
+        ? `Satuan "${unit.name}" (${unit.symbol}) akan dinonaktifkan.`
+        : `Satuan "${unit.name}" (${unit.symbol}) akan diaktifkan kembali.`,
+      confirmText: isDeactivating ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan',
+      confirmVariant: isDeactivating ? 'warning' : 'success',
+      icon: isDeactivating ? 'bi-toggle-off' : 'bi-toggle-on',
+      loading: false,
+      action: async () => {
+        try {
+          await axios.patch(`/api/units/${unit.id}/toggle-status`);
+          showToast(`Status satuan "${unit.name}" berhasil diubah.`, 'success');
+          setConfirmState((prev) => ({ ...prev, show: false }));
+          fetchUnits();
+        } catch {
+          showToast('Gagal memperbarui status satuan.', 'danger');
+          setConfirmState((prev) => ({ ...prev, loading: false }));
+        }
+      },
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (confirmState.action) {
+      setConfirmState((prev) => ({ ...prev, loading: true }));
+      await confirmState.action();
     }
   };
 
@@ -98,9 +147,9 @@ export default function UnitManagement() {
                     </td>
                     <td className="text-center">
                       {unit.isActive !== false ? (
-                        <span className="badge bg-success">AKTIF</span>
+                        <span className="badge bg-success-subtle text-success border border-success-subtle">AKTIF</span>
                       ) : (
-                        <span className="badge bg-danger">NONAKTIF</span>
+                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle">NONAKTIF</span>
                       )}
                     </td>
                     <td className="text-center">
@@ -113,9 +162,9 @@ export default function UnitManagement() {
                           <i className="bi bi-pencil"></i>
                         </button>
                         <button
-                          className={`btn ${unit.isActive !== false ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                          className={`btn ${unit.isActive !== false ? 'btn-outline-warning' : 'btn-outline-success'}`}
                           title="Ubah Status"
-                          onClick={() => handleToggleStatus(unit)}
+                          onClick={() => handleOpenToggleStatusModal(unit)}
                         >
                           <i className={`bi ${unit.isActive !== false ? 'bi-toggle-on' : 'bi-toggle-off'}`}></i>
                         </button>
@@ -177,6 +226,27 @@ export default function UnitManagement() {
           </div>
         </div>
       )}
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText={confirmState.confirmText}
+        confirmVariant={confirmState.confirmVariant}
+        icon={confirmState.icon}
+        loading={confirmState.loading}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, show: false }))}
+      />
+
+      {/* Floating Modern Toast Alert */}
+      <ToastNotification
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+      />
     </div>
   );
 }

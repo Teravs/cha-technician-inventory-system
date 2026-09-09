@@ -188,3 +188,28 @@ exports.deleteItem = async (req, res) => {
     return res.status(500).json({ message: 'Gagal menghapus barang', error: err.message });
   }
 };
+
+exports.toggleStatus = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ message: 'ID barang tidak valid' });
+  }
+
+  try {
+    const item = await prisma.item.findUnique({ where: { id } });
+    if (!item) return res.status(404).json({ message: 'Barang tidak ditemukan' });
+
+    const updated = await prisma.item.update({
+      where: { id },
+      data: { isActive: !item.isActive }
+    });
+
+    const actionText = updated.isActive ? 'diaktifkan kembali' : 'dinonaktifkan (arsip)';
+    return res.status(200).json({
+      message: `Barang "${updated.name}" berhasil ${actionText}.`,
+      isActive: updated.isActive
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Gagal memperbarui status barang', error: err.message });
+  }
+};

@@ -10,6 +10,7 @@ router.get('/:id', itemController.getItemById);
 router.post('/', authorize('SUPER_ADMIN', 'KEPALA'), itemController.createItem);
 router.put('/:id', authorize('SUPER_ADMIN', 'KEPALA'), itemController.updateItem);
 router.post('/:id/adjust', authorize('SUPER_ADMIN', 'KEPALA'), itemController.adjustStock);
+router.patch('/:id/toggle-status', authorize('SUPER_ADMIN', 'KEPALA'), itemController.toggleStatus);
 router.delete('/:id', authorize('SUPER_ADMIN', 'KEPALA'), itemController.deleteItem);
 
 module.exports = router;

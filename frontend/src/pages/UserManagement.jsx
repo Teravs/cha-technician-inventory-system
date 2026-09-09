@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import ConfirmModal from '../components/ConfirmModal';
+import ToastNotification from '../components/ToastNotification';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -8,6 +10,29 @@ export default function UserManagement() {
   const [currentUser, setCurrentUser] = useState(null);
   const [formData, setFormData] = useState({ name: '', username: '', password: '', role: 'STAFF' });
   const [saving, setSaving] = useState(false);
+
+  // Confirmation Modal State
+  const [confirmState, setConfirmState] = useState({
+    show: false,
+    title: '',
+    message: '',
+    confirmText: '',
+    confirmVariant: 'warning',
+    icon: 'bi-question-circle',
+    loading: false,
+    action: null,
+  });
+
+  // Toast Notification State
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: 'success',
+  });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+  };
 
   const fetchUsers = () => {
     setLoading(true);
@@ -43,39 +68,74 @@ export default function UserManagement() {
     try {
       if (currentUser) {
         await axios.put(`/api/users/${currentUser.id}`, formData);
+        showToast('Data pengguna berhasil diperbarui.', 'success');
       } else {
         await axios.post('/api/users', formData);
+        showToast('Pengguna baru berhasil didaftarkan.', 'success');
       }
       setShowModal(false);
       setFormData({ name: '', username: '', password: '', role: 'STAFF' });
       fetchUsers();
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal menyimpan data pengguna');
+      showToast(err.response?.data?.message || 'Gagal menyimpan data pengguna.', 'danger');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleToggleStatus = async (user) => {
-    if (window.confirm(`Ubah status aktif user "${user.name}"?`)) {
-      try {
-        await axios.patch(`/api/users/${user.id}/toggle-status`);
-        fetchUsers();
-      } catch (err) {
-        alert('Gagal memperbarui status user');
-      }
-    }
+  const handleOpenToggleStatusModal = (user) => {
+    const isDeactivating = user.isActive;
+    setConfirmState({
+      show: true,
+      title: isDeactivating ? 'Nonaktifkan Pengguna' : 'Aktifkan Pengguna',
+      message: isDeactivating
+        ? `Akun "${user.name}" (${user.username}) akan dinonaktifkan dan tidak dapat login ke sistem.`
+        : `Akun "${user.name}" (${user.username}) akan diaktifkan kembali.`,
+      confirmText: isDeactivating ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan',
+      confirmVariant: isDeactivating ? 'warning' : 'success',
+      icon: isDeactivating ? 'bi-person-slash' : 'bi-person-check',
+      loading: false,
+      action: async () => {
+        try {
+          await axios.patch(`/api/users/${user.id}/toggle-status`);
+          showToast(`Status pengguna "${user.name}" berhasil diubah.`, 'success');
+          setConfirmState((prev) => ({ ...prev, show: false }));
+          fetchUsers();
+        } catch {
+          showToast('Gagal memperbarui status pengguna.', 'danger');
+          setConfirmState((prev) => ({ ...prev, loading: false }));
+        }
+      },
+    });
   };
 
-  const handleDeleteUser = async (user) => {
-    if (window.confirm(`Yakin ingin menghapus akun pengguna "${user.name}" (${user.username})?`)) {
-      try {
-        const res = await axios.delete(`/api/users/${user.id}`);
-        alert(res.data?.message || 'Pengguna berhasil dihapus');
-        fetchUsers();
-      } catch (err) {
-        alert(err.response?.data?.message || 'Gagal menghapus pengguna');
-      }
+  const handleOpenDeleteUserModal = (user) => {
+    setConfirmState({
+      show: true,
+      title: 'Hapus Akun Pengguna',
+      message: `Apakah Anda yakin ingin menghapus pengguna "${user.name}" (${user.username})? Tindakan ini akan diproses dengan aman.`,
+      confirmText: 'Ya, Hapus Pengguna',
+      confirmVariant: 'danger',
+      icon: 'bi-trash-fill',
+      loading: false,
+      action: async () => {
+        try {
+          const res = await axios.delete(`/api/users/${user.id}`);
+          showToast(res.data?.message || 'Pengguna berhasil dihapus.', 'success');
+          setConfirmState((prev) => ({ ...prev, show: false }));
+          fetchUsers();
+        } catch (err) {
+          showToast(err.response?.data?.message || 'Gagal menghapus pengguna.', 'danger');
+          setConfirmState((prev) => ({ ...prev, loading: false }));
+        }
+      },
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (confirmState.action) {
+      setConfirmState((prev) => ({ ...prev, loading: true }));
+      await confirmState.action();
     }
   };
 
@@ -125,9 +185,9 @@ export default function UserManagement() {
                     </td>
                     <td className="text-center">
                       {u.isActive ? (
-                        <span className="badge bg-success">AKTIF</span>
+                        <span className="badge bg-success-subtle text-success border border-success-subtle">AKTIF</span>
                       ) : (
-                        <span className="badge bg-danger">NONAKTIF</span>
+                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle">NONAKTIF</span>
                       )}
                     </td>
                     <td className="text-center">
@@ -142,14 +202,14 @@ export default function UserManagement() {
                         <button
                           className={`btn ${u.isActive ? 'btn-outline-warning' : 'btn-outline-success'}`}
                           title={u.isActive ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
-                          onClick={() => handleToggleStatus(u)}
+                          onClick={() => handleOpenToggleStatusModal(u)}
                         >
                           <i className={`bi ${u.isActive ? 'bi-toggle-on' : 'bi-toggle-off'}`}></i>
                         </button>
                         <button
                           className="btn btn-outline-danger"
                           title="Hapus Pengguna"
-                          onClick={() => handleDeleteUser(u)}
+                          onClick={() => handleOpenDeleteUserModal(u)}
                         >
                           <i className="bi bi-trash"></i>
                         </button>
@@ -237,6 +297,27 @@ export default function UserManagement() {
           </div>
         </div>
       )}
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText={confirmState.confirmText}
+        confirmVariant={confirmState.confirmVariant}
+        icon={confirmState.icon}
+        loading={confirmState.loading}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, show: false }))}
+      />
+
+      {/* Floating Modern Toast Alert */}
+      <ToastNotification
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+      />
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import ConfirmModal from '../components/ConfirmModal';
+import ToastNotification from '../components/ToastNotification';
 
 export default function CategoryManagement() {
   const [categories, setCategories] = useState([]);
@@ -7,6 +9,29 @@ export default function CategoryManagement() {
   const [showModal, setShowModal] = useState(false);
   const [currentCategory, setCurrentCategory] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
+
+  // Confirmation Modal State
+  const [confirmState, setConfirmState] = useState({
+    show: false,
+    title: '',
+    message: '',
+    confirmText: '',
+    confirmVariant: 'warning',
+    icon: 'bi-question-circle',
+    loading: false,
+    action: null,
+  });
+
+  // Toast Notification State
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: 'success',
+  });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+  };
 
   const fetchCategories = () => {
     setLoading(true);
@@ -36,24 +61,48 @@ export default function CategoryManagement() {
     try {
       if (currentCategory) {
         await axios.put(`/api/categories/${currentCategory.id}`, formData);
+        showToast('Kategori berhasil diperbarui.', 'success');
       } else {
         await axios.post('/api/categories', formData);
+        showToast('Kategori baru berhasil ditambahkan.', 'success');
       }
       setShowModal(false);
       fetchCategories();
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal menyimpan kategori');
+      showToast(err.response?.data?.message || 'Gagal menyimpan kategori.', 'danger');
     }
   };
 
-  const handleToggleStatus = async (cat) => {
-    if (window.confirm(`Ubah status aktif kategori "${cat.name}"?`)) {
-      try {
-        await axios.patch(`/api/categories/${cat.id}/toggle-status`);
-        fetchCategories();
-      } catch (err) {
-        alert('Gagal memperbarui status kategori');
-      }
+  const handleOpenToggleStatusModal = (cat) => {
+    const isDeactivating = cat.isActive !== false;
+    setConfirmState({
+      show: true,
+      title: isDeactivating ? 'Nonaktifkan Kategori' : 'Aktifkan Kategori',
+      message: isDeactivating
+        ? `Kategori "${cat.name}" akan dinonaktifkan.`
+        : `Kategori "${cat.name}" akan diaktifkan kembali.`,
+      confirmText: isDeactivating ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan',
+      confirmVariant: isDeactivating ? 'warning' : 'success',
+      icon: isDeactivating ? 'bi-toggle-off' : 'bi-toggle-on',
+      loading: false,
+      action: async () => {
+        try {
+          await axios.patch(`/api/categories/${cat.id}/toggle-status`);
+          showToast(`Status kategori "${cat.name}" berhasil diubah.`, 'success');
+          setConfirmState((prev) => ({ ...prev, show: false }));
+          fetchCategories();
+        } catch {
+          showToast('Gagal memperbarui status kategori.', 'danger');
+          setConfirmState((prev) => ({ ...prev, loading: false }));
+        }
+      },
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (confirmState.action) {
+      setConfirmState((prev) => ({ ...prev, loading: true }));
+      await confirmState.action();
     }
   };
 
@@ -94,9 +143,9 @@ export default function CategoryManagement() {
                     <td className="text-muted">{cat.description || '-'}</td>
                     <td className="text-center">
                       {cat.isActive !== false ? (
-                        <span className="badge bg-success">AKTIF</span>
+                        <span className="badge bg-success-subtle text-success border border-success-subtle">AKTIF</span>
                       ) : (
-                        <span className="badge bg-danger">NONAKTIF</span>
+                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle">NONAKTIF</span>
                       )}
                     </td>
                     <td className="text-center">
@@ -109,9 +158,9 @@ export default function CategoryManagement() {
                           <i className="bi bi-pencil"></i>
                         </button>
                         <button
-                          className={`btn ${cat.isActive !== false ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                          className={`btn ${cat.isActive !== false ? 'btn-outline-warning' : 'btn-outline-success'}`}
                           title="Ubah Status"
-                          onClick={() => handleToggleStatus(cat)}
+                          onClick={() => handleOpenToggleStatusModal(cat)}
                         >
                           <i className={`bi ${cat.isActive !== false ? 'bi-toggle-on' : 'bi-toggle-off'}`}></i>
                         </button>
@@ -172,6 +221,27 @@ export default function CategoryManagement() {
           </div>
         </div>
       )}
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        show={confirmState.show}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText={confirmState.confirmText}
+        confirmVariant={confirmState.confirmVariant}
+        icon={confirmState.icon}
+        loading={confirmState.loading}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, show: false }))}
+      />
+
+      {/* Floating Modern Toast Alert */}
+      <ToastNotification
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+      />
     </div>
   );
 }
